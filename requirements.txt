@@ -2,4 +2,6 @@ streamlit==1.23.1
 pandas==1.0.5
 numpy==1.21.0
 matplotlib==3.2.2
+protobuf==3.9.0
 tensorflow==2.11.0
+
