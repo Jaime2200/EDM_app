@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import streamlit as st
@@ -13,10 +13,57 @@ from sklearn.linear_model import LinearRegression
 from streamlit_folium import folium_static
 import folium 
 from geopy.geocoders import Nominatim
+from datetime import datetime
+
+
+from streamlit import components
+
+# Establecer el estilo CSS personalizado
+st.markdown(
+    """
+    <style>
+    .title {
+        font-family: 'Arial', sans-serif;
+        font-size: 42px;
+        font-weight: bold;
+        color: #1f4e79;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    .text {
+        font-family: 'Arial', sans-serif;
+        font-size: 18px;
+        color: #444444;
+        text-align: justify;
+        margin-bottom: 20px;
+    }
+    .authors {
+        font-family: 'Arial', sans-serif;
+        font-size: 16px;
+        color: #888888;
+        text-align: center;
+        margin-top: 40px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# Título
+st.markdown('<h1 class="title">Interactive Data Analysis for Air Quality Assessment</h1>', unsafe_allow_html=True)
+st.markdown('<h2 class="title">A Case Study of Valencia City</h2>', unsafe_allow_html=True)
+
+# Autores
+st.markdown('<p class="authors">Authors: Iván Arcos, Jaime Pérez, Pablo Llobregat</p>', unsafe_allow_html=True)
+
+# Texto
+st.markdown('<p class="text">User-friendly application designed for the comprehensive examination of '
+            'air quality variables over time. Leveraging a series of sophisticated analytical tools '
+            'such as time-series analysis, correlation matrices, Principal Component Analysis (PCA), '
+            'Random Forest models, and LSTM neural networks, the application allows users to personalize, '
+            'explore, and forecast air pollution scenarios.</p>', unsafe_allow_html=True)
 
 valencia_coords = [39.4699, -0.3763]
-
-st.title("Mapa interactivo de Valencia, España")
 
 m = folium.Map(location=valencia_coords, zoom_start=13)
 
@@ -123,11 +170,11 @@ print(barrios_sin_estacion)
 
 df['nombre'] = df['Estacion'].map(barrios_estaciones)
 estaciones = df['Estacion'].unique()
-selected_estaciones = st.multiselect("Select one or more stations", estaciones, default=estaciones[3])
+selected_estaciones = st.multiselect("Select one or more stations", estaciones, default=[estaciones[6], estaciones[2]])
 filtered_data = df[df['Estacion'].isin(selected_estaciones)]
 
 variables = df.columns  # Variables disponibles en los datos
-selected_variables = st.multiselect("Select the variables to display", variables, default=["PM2.5", "NO2"])
+selected_variables = st.multiselect("Select the variables to display", variables[5:], default=["PM10", "NO2"])
 filtered_data = filtered_data[['Fecha'] + selected_variables + ['Estacion', 'nombre', 'Dia de la semana', 'Mes', 'Year']]
 filtered_data["Fecha"] = pd.to_datetime(filtered_data["Fecha"])
 
@@ -135,11 +182,11 @@ filtered_data["Fecha"] = pd.to_datetime(filtered_data["Fecha"])
     
 
 # Obtener la frecuencia seleccionada (por semanas o meses)
-frequency = st.selectbox("Select frequency", ["Día", "Semana", "Mes"])
+frequency = st.selectbox("Select frequency", ["Mes", "Semana", "Día"])
 
 # Filtrar los datos por fecha seleccionada
-start_date = st.date_input("Select start date", pd.to_datetime(df['Fecha'].min()))
-end_date = st.date_input("Select end date", pd.to_datetime(df['Fecha'].max()))
+start_date = st.date_input("Select start date", datetime(2018, 1, 1).date(), max_value = datetime.now())
+end_date = st.date_input("Select end date", datetime.now(), min_value = datetime(2004, 1, 1).date())
 filtered_data = filtered_data[(filtered_data['Fecha'].dt.date >= start_date) & (filtered_data['Fecha'].dt.date <= end_date)]
 
 
@@ -188,6 +235,10 @@ for est, coords in df_estaciones_coords.items():
              popup=f"{est}\n{selected_variables[0]}: {round(grouped_data_mapa.loc[grouped_data_mapa['nombre'] == barrios_estaciones[est], selected_variables[0]].values[0],3)}",
         )
         marker.add_to(m)  
+        
+st.header(f"Interactive map of Valencia for {selected_variables[0]}")
+st.markdown("""The interactive map displays neighborhoods whose nearest station is one of the selected stations. Each station is also represented by an interactive icon on the map, indicating the average value of the first selected variable for the chosen date range.""")
+    
 
 # Mostrar el mapa en Streamlit
 folium_static(m)
@@ -198,7 +249,6 @@ if selected_variables:
     st.header("Graphs of distributions by variable")
     fig, ax = plt.subplots(1, len(selected_variables), figsize=(10, 5))
     for i, variable in enumerate(selected_variables):
-        ax[i].set_title(f'Distributions')
         try:
             sns.histplot(data = grouped_data, x = variable, bins = num_bins, hue = 'Estacion', kde = "True", alpha = 0.4, ax = ax[i])
         except:
@@ -208,14 +258,14 @@ if selected_variables:
 st.header("Correlation graphs by station")
 # Graficar correlaciones
 if len(selected_variables) > 1:
-    fig, ax = plt.subplots(1, len(selected_estaciones), figsize=(10, 5))
+    fig, ax = plt.subplots(1, len(selected_estaciones), figsize=(15, 7))
     for i, station in enumerate(selected_estaciones):
         corr = grouped_data.loc[grouped_data['Estacion'] == station, selected_variables].corr()
         try:
-            sns.heatmap(corr, annot=True, cmap='coolwarm', square=True, ax= ax[i])
+            sns.heatmap(corr, annot=True, cmap='coolwarm', square=True, ax= ax[i], cbar=False)
             ax[i].set_title(f'Correlation matrix of {station}')
         except:
-            sns.heatmap(corr, annot=True, cmap='coolwarm', square=True, ax= ax)
+            sns.heatmap(corr, annot=True, cmap='coolwarm', square=True, ax= ax, cbar=False)
             ax.set_title(f'Correlation matrix of {station}')
     st.pyplot(fig)
 else:
@@ -287,19 +337,22 @@ scores = pca.fit_transform(data_pca_esc)
 component1 = scores[:, 0]
 component2 = scores[:, 1]
 
+# Obtener la varianza explicada por las dos primeras componentes
+explained_variance = pca.explained_variance_ratio_[:2]
+
 # Graficar el biplot
-plt.figure(figsize=(18, 12))
-sns.scatterplot(x=component1, y=component2, s = 100, 
-                hue = filtered_data['Estacion'])
+plt.figure(figsize=(12, 8))
+sns.scatterplot(x=component1, y=component2, s=100, hue=filtered_data['Estacion'])
 plt.xlabel('Principal Component 1')
 plt.ylabel('Principal Component 2')
-plt.title('Biplot of the first two principal components')
+plt.title('PCA - Explained Variance: {:.2f}%'.format(sum(explained_variance) * 100))
+plt.show()
 
 cont = 0
 for p1,p2 in zip(pca.components_[0], pca.components_[1]):
     if abs(p1) + abs(p2) >= 0:
         plt.arrow(0,0,10*p1,10*p2, head_width = 0.2)
-        plt.text(10*p1,10*p2, s = nombres[cont], weight = "bold")
+        plt.text(10*p1,10*p2, s = nombres[cont], weight = "bold", fontsize = 12)
         #plt.text(22*p1,22*p2, s = f"({round(standardized_loadings[0][cont],2)}, {round(standardized_loadings[1][cont], 2)})", color = "red", weight = "bold")
     cont += 1
 st.pyplot(plt)
@@ -314,16 +367,30 @@ st.markdown("""To obtain a prediction of the first selected variable for each st
 from sklearn.ensemble import RandomForestRegressor
 si = SimpleImputer()
 rfr = RandomForestRegressor(n_estimators = 100)
-fig, (ax1,ax2) = plt.subplots(2, figsize=(12, 10)) # Creates figure fig and add an axes, ax.
+plt.figure(figsize=(12,7))
+dic_importances = {} #
 for estacion in selected_estaciones:
+    
     limpio = df.loc[df['Estacion'] == estacion].iloc[:,np.r_[5:19]].dropna(axis=1, how='all')
     clean = pd.DataFrame(si.fit_transform(limpio), columns = limpio.columns)
     X,y = clean.drop([selected_variables[0]], axis = 1), clean[selected_variables[0]]
     rfr.fit(X,y)
     importances = list(zip(rfr.feature_importances_, X.columns))
-    ax1.barh([v[1] for v in importances], [v[0] for v in importances], label = estacion, alpha = 0.3)
-    ax1.set_title(f"Importances, response {selected_variables[0]} for station {estacion}")
-    for variable in selected_variables[1:]:
+    for imp,var in importances:
+        if var in dic_importances:
+            dic_importances[var].append(imp)
+        else:
+            dic_importances[var] = [imp]
+            
+    for key, value in dic_importances.items():
+        if len(value) == 0:
+            dic_importances[key] = [0] * max([len(i) for i in dic_importances.values()])
+        elif len(value) < max([len(i) for i in dic_importances.values()]):
+            dic_importances[key] = value + [0] * (max([len(i) for i in dic_importances.values()])-len(value))
+        else:
+            pass
+        
+    for i,variable in enumerate(selected_variables[1:2]): # Solo la siguiente variable
         preds = []
         minimo = X[variable].min()
         maximo = X[variable].max()
@@ -332,13 +399,23 @@ for estacion in selected_estaciones:
             X.loc[:,variable] = [valor] * len(X[variable])
             preds_all = rfr.predict(X)
             preds.append(preds_all.mean())
-        ax2.plot(np.arange(minimo, maximo,(maximo-minimo)/100), preds, label = estacion)
-ax1.legend()
-ax2.legend()
-ax2.set_title(f"PDP for {selected_variables[0]}")
-ax2.set_xlabel(variable)
-st.pyplot(fig)
-    
+        #st.write(f"{i},{variable}")
+        plt.plot(np.arange(minimo, maximo,(maximo-minimo)/100), preds, label = estacion)
+
+plt.legend()
+plt.title(f"PDP, response {selected_variables[0]}")
+plt.xlabel(selected_variables[1])
+st.pyplot(plt)
+
+plt.figure(figsize=(12,7))
+df_importances = pd.DataFrame(dic_importances)
+#st.write(df_importances)
+df_importances = pd.melt(df_importances)
+df_importances['estacion'] = selected_estaciones * len(dic_importances)
+sns.barplot(x = df_importances['variable'],  y= df_importances['value'], hue = df_importances['estacion'])
+plt.xticks(rotation=45)
+st.pyplot(plt)
+
     
 st.header("Station forecasts")
     
@@ -407,4 +484,10 @@ for estacion in grouped_data['Estacion'].unique():
             plt.ylabel(variable)
             plt.title(estacion)
             st.pyplot(plt)
+
+
+# In[ ]:
+
+
+
 
