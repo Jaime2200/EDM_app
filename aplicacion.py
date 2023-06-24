@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import streamlit as st
@@ -247,6 +247,7 @@ folium_static(m)
 if selected_variables:
     num_bins = st.slider('Select the number of bins:', min_value=5, max_value=50, value=10)
     st.header("Graphs of distributions by variable")
+    st.markdown("The generated graph displays the distributions of the selected variables. Each selected variable will have its own distribution plot. Additionally, the distribution plots are differentiated based on the selected station. The x-axis represents the values of the selected variable, while the y-axis represents the frequency of occurrence of those values. The slider allows the user to interactively adjust the number of bins and observe the impact on the visualization.")
     fig, ax = plt.subplots(1, len(selected_variables), figsize=(10, 5))
     for i, variable in enumerate(selected_variables):
         try:
@@ -256,6 +257,7 @@ if selected_variables:
     st.pyplot(fig)
 
 st.header("Correlation graphs by station")
+st.markdown("The graphs visualize the correlation matrix between the selected variables within each station. The heatmaps provide a color-coded representation of the correlation strength, allowing for a quick assessment of the relationships between variables. The graph is interactive, allowing users to explore correlations by station. If fewer than two variables are selected, a message is displayed indicating that at least two variables are required for correlation analysis.")
 # Graficar correlaciones
 if len(selected_variables) > 1:
     fig, ax = plt.subplots(1, len(selected_estaciones), figsize=(15, 7))
@@ -275,6 +277,7 @@ else:
 plt.figure(figsize=(10, 6))
 
 st.header("Line graphs by variable and station")
+st.markdown("The generated graph displays multiple lines representing the temporal evolution of selected variables across different stations. The x-axis represents time (days, weeks, or months), and the y-axis represents the variable values. Each line represents the trend and changes in a selected variable for a specific station. The graph allows for comparisons between stations, analysis of temporal changes, and identification of potential relationships or correlations between the selected variables.")
 
 for variable in selected_variables:
     for station in selected_estaciones:
@@ -290,6 +293,7 @@ plt.legend()
 st.pyplot(plt)
 
 st.header("Violin chart by station")
+st.markdown("The graph visually represents the distribution and variation of the first selected variable across different months. The violin plot provides an overview of the data's distribution, while the overlaid stripplot displays individual data points. The plot allows for comparisons of the variable's values across months and enables the observation of any potential patterns or discrepancies.")
 
 grouped_data = filtered_data.copy()  # Sin agrupación, mantén los datos diarios
 plt.figure(figsize=(15,10))
@@ -306,8 +310,7 @@ st.pyplot(plt)
 
 st.header("Principal Component Analysis")
 
-st.markdown("""In this analysis we can observe the different relationships between features of our data,
-            thus looking at the behavior of the gases of interest with respect to different environmental conditions.""")
+st.markdown("""In this PCA analysis, the two-dimensional scatter plot displays the selected data based on the chosen frequency (daily, weekly, or monthly). The data points represent the combination of variables for each station and time interval. The scatter plot differentiates the stations by assigning different colors to each station. This color distinction allows for easy identification and comparison of data points associated with different stations.""")
 
 from sklearn.impute import SimpleImputer
 si = SimpleImputer()
@@ -357,11 +360,9 @@ for p1,p2 in zip(pca.components_[0], pca.components_[1]):
     cont += 1
 st.pyplot(plt)
 
-st.header("Predictive model with LSTM network")
+st.header("Random forest importances + PDP + LSTM predictions")
 
-st.markdown("""To obtain a prediction of the first selected variable for each station, 
-          we generated a neural network composed of an LSTM network with 64 neurons and a dense layer to fit the shape of our data.
-          our data. """)
+st.markdown("""Our application also incorporates a Random Forest model with the first selected variable as the response variable. It displays the importances of the remaining variables, indicating how much they contribute to reducing entropy in the model's splits. Importances are analyzed separately for each station, resulting in distinct models and importance rankings.  \n\n  Moreover, when another variable is selected, the application generates a Partial Dependence Plot (PDP). The PDP illustrates how the average prediction of the response variable changes as we fix values for the selected variable of interest.  \n\n  The combination of the Random Forest model, variable importances, and Partial Dependence Plots in our application enables comprehensive analysis of the selected variables and their impact on predicting the response variable. It facilitates the exploration of important features and their relationships, aiding in decision-making and providing a deeper understanding of the dynamics of air quality.""")
 
 
 from sklearn.ensemble import RandomForestRegressor
@@ -418,6 +419,8 @@ st.pyplot(plt)
 
     
 st.header("Station forecasts")
+
+st.markdown("We have also incorporated a simple multivariate LSTM (Long Short-Term Memory) neural network into our application. This neural network is designed to predict each of the selected variables for each station, based on the data grouping. The predictions generated by the model represent the average values for the following day, week, or month, depending on the selected data grouping.  \n\n  The LSTM neural network is well-suited for time series forecasting tasks, as it can effectively capture the temporal dependencies and patterns present in the data. By considering multiple variables as input features, the model can take into account the interrelationships and dynamics between these variables when making predictions.  \n\n  The training of the LSTM neural network depends on the selected range of dates. By allowing users to define the specific time period of interest, the model can be trained on the available data within that range, enabling customized and accurate predictions for the desired timeframe.")
     
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
