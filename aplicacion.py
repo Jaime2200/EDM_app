@@ -370,38 +370,48 @@ si = SimpleImputer()
 rfr = RandomForestRegressor(n_estimators = 100)
 plt.figure(figsize=(12,7))
 dic_importances = {} #
+estaciones_limpias = []
 for estacion in selected_estaciones:
     
     limpio = df.loc[df['Estacion'] == estacion].iloc[:,np.r_[5:19]].dropna(axis=1, how='all')
-    clean = pd.DataFrame(si.fit_transform(limpio), columns = limpio.columns)
-    X,y = clean.drop([selected_variables[0]], axis = 1), clean[selected_variables[0]]
-    rfr.fit(X,y)
-    importances = list(zip(rfr.feature_importances_, X.columns))
-    for imp,var in importances:
-        if var in dic_importances:
-            dic_importances[var].append(imp)
-        else:
-            dic_importances[var] = [imp]
+    if selected_variables[0] in limpio.columns and selected_variables[1] in limpio.columns:
+        estaciones_limpias.append(estacion)
+        clean = pd.DataFrame(si.fit_transform(limpio), columns = limpio.columns)
+        X,y = clean.drop([selected_variables[0]], axis = 1), clean[selected_variables[0]]
+        rfr.fit(X,y)
+        importances = list(zip(rfr.feature_importances_, X.columns))
+        for imp,var in importances:
+            if var in dic_importances:
+                dic_importances[var].append(imp)
+            else:
+                dic_importances[var] = [imp]
+
+        for key, value in dic_importances.items():
+            if len(value) == 0:
+                dic_importances[key] = [0] * max([len(i) for i in dic_importances.values()])
+            elif len(value) < max([len(i) for i in dic_importances.values()]):
+                dic_importances[key] = value + [0] * (max([len(i) for i in dic_importances.values()])-len(value))
+            else:
+                pass
+
+        for i,variable in enumerate(selected_variables[1:2]): # Solo la siguiente variable
+            preds = []
+            minimo = X[variable].min()
+            maximo = X[variable].max()
+            for valor in np.arange(minimo, maximo,(maximo-minimo)/100):
+                #print(valor)
+                X.loc[:,variable] = [valor] * len(X[variable])
+                preds_all = rfr.predict(X)
+                preds.append(preds_all.mean())
+            #st.write(f"{i},{variable}")
+            plt.plot(np.arange(minimo, maximo,(maximo-minimo)/100), preds, label = estacion)
             
-    for key, value in dic_importances.items():
-        if len(value) == 0:
-            dic_importances[key] = [0] * max([len(i) for i in dic_importances.values()])
-        elif len(value) < max([len(i) for i in dic_importances.values()]):
-            dic_importances[key] = value + [0] * (max([len(i) for i in dic_importances.values()])-len(value))
-        else:
-            pass
+    else:
+        pass
         
-    for i,variable in enumerate(selected_variables[1:2]): # Solo la siguiente variable
-        preds = []
-        minimo = X[variable].min()
-        maximo = X[variable].max()
-        for valor in np.arange(minimo, maximo,(maximo-minimo)/100):
-            #print(valor)
-            X.loc[:,variable] = [valor] * len(X[variable])
-            preds_all = rfr.predict(X)
-            preds.append(preds_all.mean())
-        #st.write(f"{i},{variable}")
-        plt.plot(np.arange(minimo, maximo,(maximo-minimo)/100), preds, label = estacion)
+        
+        
+#st.markdown(f"The station {estacion} have a column of the first 2 full of missing data, if you want to observe other values of this station, change your configuration. We're sorry  😞")
 
 plt.legend()
 plt.title(f"PDP, response {selected_variables[0]}")
@@ -412,7 +422,7 @@ plt.figure(figsize=(12,7))
 df_importances = pd.DataFrame(dic_importances)
 #st.write(df_importances)
 df_importances = pd.melt(df_importances)
-df_importances['estacion'] = selected_estaciones * len(dic_importances)
+df_importances['estacion'] = estaciones_limpias * len(dic_importances)
 sns.barplot(x = df_importances['variable'],  y= df_importances['value'], hue = df_importances['estacion'])
 plt.xticks(rotation=45)
 st.pyplot(plt)
